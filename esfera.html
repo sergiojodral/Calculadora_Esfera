@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Calculadora de la esfera y la cuña esférica</title>
+
+<!-- MathJax para mostrar LaTeX -->
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<style>
+  body{
+    font-family:"Segoe UI",Arial,sans-serif;
+    background:linear-gradient(120deg,#eef2f7,#f9fbfd);
+    margin:20px;
+    color:#2c3e50;
+  }
+  h1{ text-align:center; margin:0; }
+  .subtitle{ text-align:center; font-style:italic; color:#555; margin:6px 0 18px; }
+
+  .section{
+    background:#fff;
+    padding:18px;
+    margin-bottom:18px;
+    border-radius:12px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+  }
+  .row{
+    display:flex; gap:18px; flex-wrap:wrap;
+    align-items:flex-start; justify-content:center;
+  }
+  .card{ flex:1 1 340px; min-width:320px; }
+
+  .controls{
+    margin-top:8px;
+    display:flex; flex-wrap:wrap; gap:10px;
+    justify-content:flex-start; align-items:center;
+  }
+
+  label{ color:#34495e; }
+  input, select{
+    padding:6px; font-size:1em;
+    border:1px solid #cfd8e3; border-radius:8px;
+  }
+  input{ width:110px; }
+  select{ width:210px; }
+
+  button{
+    padding:7px 14px;
+    background:#2980b9; color:#fff;
+    border:none; border-radius:9px;
+    cursor:pointer; font-size:1em;
+  }
+  button:hover{ background:#1f6391; }
+
+  .result{
+    margin-top:12px;
+    background:#eef5ff;
+    padding:10px;
+    border-radius:9px;
+    border-left:4px solid #2980b9;
+    font-size:1.05em;
+  }
+
+  .small{ font-size:0.95em; color:#555; }
+  .svg-box{ display:flex; justify-content:center; margin-top:8px; }
+
+  hr{ border:none; border-top:1px solid #e7eef7; margin:12px 0; }
+
+  footer{
+    text-align:center;
+    margin-top:22px;
+    padding:14px 10px;
+    color:#556;
+    font-size:0.95em;
+  }
+  footer .badge{
+    display:inline-block;
+    padding:8px 14px;
+    border-radius:999px;
+    background:#ffffffcc;
+    border:1px solid #e3ebf5;
+    box-shadow:0 3px 10px rgba(0,0,0,0.06);
+  }
+</style>
+</head>
+
+<body>
+
+<h1>🧮 Calculadora de la esfera y la cuña esférica</h1>
+<div class="subtitle">Herramienta para comprobar resultados (2º ESO)</div>
+
+<!-- ====== DIBUJO + UNIDADES + FORMULAS ====== -->
+<div class="section">
+  <div class="row">
+    <div class="card">
+      <h2>Dibujo (esfera + cuña)</h2>
+      <div class="small">La cuña/huso se representa como una “rebanada” (sección) con ángulo \( \alpha \).</div>
+
+      <div class="svg-box">
+        <svg id="figura" width="320" height="320" viewBox="0 0 320 320">
+          <defs>
+            <radialGradient id="gradEsfera" cx="35%" cy="35%">
+              <stop offset="0%" stop-color="#d9efff"/>
+              <stop offset="100%" stop-color="#4fa3e3"/>
+            </radialGradient>
+            <marker id="arrow" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L6,3 L0,6 Z" fill="#000"/>
+            </marker>
+          </defs>
+        </svg>
+      </div>
+
+      <div class="controls">
+        <label>Ángulo \( \alpha \) (°):</label>
+        <input type="number" id="anguloDraw" value="60" min="0" max="360" oninput="redibujar()">
+        <button onclick="redibujar()">Actualizar dibujo</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Unidades</h2>
+      <div class="small">Elige la unidad del radio. La salida mostrará \(u^2\) (área) y \(u^3\) (volumen).</div>
+      <hr>
+      <div class="controls">
+        <label for="unitSel"><strong>Unidad del radio \(r\):</strong></label>
+        <select id="unitSel" onchange="actualizarUnidadesEnPantalla();">
+          <option value="mm">mm</option>
+          <option value="cm" selected>cm</option>
+          <option value="m">m</option>
+        </select>
+      </div>
+
+      <hr>
+
+      <h2>Fórmulas (como en clase)</h2>
+      <div class="section" style="box-shadow:none; border:1px solid #e6eef7; margin:0;">
+        <div class="small"><strong>Esfera</strong></div>
+        \[
+          A = 4\pi r^2
+          \qquad\qquad
+          V = \frac{4}{3}\pi r^3
+        \]
+        <div class="small"><strong>Cuña / Huso</strong> (con \(\alpha\) como último factor del numerador)</div>
+        \[
+          A_{\text{cuña}}=\frac{4\pi r^2\,\alpha}{360}
+          \qquad
+          V_{\text{cuña}}=\frac{4\pi r^3\,\alpha}{3\cdot 360}
+        \]
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 1-2 UNIFICADO: AREA O VOLUMEN (ESFERA) ====== -->
+<div class="section">
+  <h2>1️⃣ Calcular área o volumen de la esfera</h2>
+
+  <div class="controls">
+    <label><strong>Quiero calcular:</strong></label>
+    <select id="modo12" onchange="actualizarModo12();">
+      <option value="area">Área de la esfera</option>
+      <option value="volumen">Volumen de la esfera</option>
+    </select>
+  </div>
+
+  <div class="small" id="formula12" style="margin-top:6px;">
+    \[
+      A = 4\pi r^2
+    \]
+  </div>
+
+  <div class="controls">
+    <label>Radio \(r\):</label>
+    <input type="number" id="r12">
+    <span id="u_r_12" class="small"></span>
+    <button onclick="calcular12()">Calcular</button>
+  </div>
+
+  <div id="res12" class="result"></div>
+</div>
+
+<!-- ====== 3-4 UNIFICADO: RADIO DESDE AREA O VOLUMEN (ESFERA) ====== -->
+<div class="section">
+  <h2>2️⃣ Hallar el radio de la esfera a partir del área o del volumen</h2>
+
+  <div class="controls">
+    <label><strong>Conozco:</strong></label>
+    <select id="modo34" onchange="actualizarModo34();">
+      <option value="area">Área de la esfera</option>
+      <option value="volumen">Volumen de la esfera</option>
+    </select>
+  </div>
+
+  <div class="small" id="formula34" style="margin-top:6px;">
+    \[
+      A = 4\pi r^2
+    \]
+  </div>
+
+  <div class="controls">
+    <label id="labelDato34">Área \(A\):</label>
+    <input type="number" id="dato34">
+    <span id="u_dato34" class="small"></span>
+    <button onclick="calcular34()">Calcular \(r\)</button>
+  </div>
+
+  <div id="res34" class="result"></div>
+</div>
+
+<!-- ====== 3 UNIFICADO: CUÑA AREA O VOLUMEN ====== -->
+<div class="section">
+  <h2>3️⃣ Calcular área o volumen de la cuña / huso</h2>
+
+  <div class="controls">
+    <label><strong>Quiero calcular:</strong></label>
+    <select id="modoCuna" onchange="actualizarModoCuna();">
+      <option value="area">Área de la cuña</option>
+      <option value="volumen">Volumen de la cuña</option>
+    </select>
+  </div>
+
+  <div class="small" id="formulaCuna" style="margin-top:6px;">
+    \[
+      A_{\text{cuña}}=\frac{4\pi r^2\,\alpha}{360}
+    \]
+  </div>
+
+  <div class="controls">
+    <label>Radio \(r\):</label>
+    <input type="number" id="rCuna">
+    <span id="u_r_cuna" class="small"></span>
+
+    <label>Ángulo \(\alpha\):</label>
+    <input type="number" id="angulo" min="0" max="360" oninput="syncAngulo();">
+    <span class="small">°</span>
+
+    <button onclick="calcularCuna()">Calcular</button>
+  </div>
+
+  <div id="resCuna" class="result"></div>
+</div>
+
+<!-- ====== 4 (ANTES 6): RADIO DESDE CUÑA ====== -->
+<div class="section">
+  <h2>4️⃣ Hallar el radio sabiendo \(\alpha\) y el área o el volumen de la cuña</h2>
+
+  <div class="small">
+    Elegimos qué dato conocemos (área o volumen) y calculamos \(r\).
+  </div>
+
+  <hr>
+
+  <div class="controls">
+    <label><strong>Quiero hallar \(r\) usando:</strong></label>
+    <select id="modo6" onchange="actualizarModo6();">
+      <option value="area">Área de la cuña</option>
+      <option value="volumen">Volumen de la cuña</option>
+    </select>
+  </div>
+
+  <div class="controls">
+    <label>Ángulo \(\alpha\) (°):</label>
+    <input type="number" id="alpha6" min="0" max="360" value="60" oninput="syncAngulo6();">
+    <span class="small">°</span>
+
+    <label id="labelDato6">Área de la cuña:</label>
+    <input type="number" id="dato6">
+    <span id="u_dato6" class="small"></span>
+
+    <button onclick="radioDesdeCuna()">Calcular \(r\)</button>
+  </div>
+
+  <div id="res6" class="result"></div>
+
+  <div class="small" style="margin-top:10px;">
+    Fórmulas usadas:
+    \[
+      A_{\text{cuña}}=\frac{4\pi r^2\,\alpha}{360}
+      \qquad
+      V_{\text{cuña}}=\frac{4\pi r^3\,\alpha}{3\cdot 360}
+    \]
+  </div>
+</div>
+
+<footer>
+  <div class="badge">
+    Este material interactivo ha sido creado por <strong>Sergio Jodral Estepa</strong>, profesor de matemáticas.
+  </div>
+</footer>
+
+<script>
+/* ===================== UNIDADES ===================== */
+function getUnit(){ return document.getElementById("unitSel").value; }
+function u2(u){ return u + "²"; }
+function u3(u){ return u + "³"; }
+
+/* ===================== DIBUJO SVG ===================== */
+const svg = document.getElementById("figura");
+function dibujarEsferaYCuna(alphaDeg){
+  while (svg.lastChild) svg.removeChild(svg.lastChild);
+
+  const cx = 160, cy = 160, R = 105;
+  const alpha = Math.max(0, Math.min(360, Number(alphaDeg) || 0));
+
+  // Esfera
+  const circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
+  circle.setAttribute("cx", cx); circle.setAttribute("cy", cy); circle.setAttribute("r", R);
+  circle.setAttribute("fill", "url(#gradEsfera)");
+  circle.setAttribute("stroke", "#1f4e79");
+  circle.setAttribute("stroke-width", "3");
+  svg.appendChild(circle);
+
+  // Ecuador
+  const eq = document.createElementNS("http://www.w3.org/2000/svg","ellipse");
+  eq.setAttribute("cx", cx); eq.setAttribute("cy", cy);
+  eq.setAttribute("rx", R); eq.setAttribute("ry", 38);
+  eq.setAttribute("fill","none"); eq.setAttribute("stroke","#1f4e79");
+  eq.setAttribute("stroke-width","2");
+  svg.appendChild(eq);
+
+  // Meridiano
+  const mer = document.createElementNS("http://www.w3.org/2000/svg","ellipse");
+  mer.setAttribute("cx", cx); mer.setAttribute("cy", cy);
+  mer.setAttribute("rx", 38); mer.setAttribute("ry", R);
+  mer.setAttribute("fill","none"); mer.setAttribute("stroke","#1f4e79");
+  mer.setAttribute("stroke-width","2");
+  mer.setAttribute("stroke-dasharray","7,5");
+  svg.appendChild(mer);
+
+  // Cuña (sector)
+  const rad = (Math.PI/180) * alpha;
+  const x1 = cx + R, y1 = cy;
+  const x2 = cx + R*Math.cos(rad), y2 = cy - R*Math.sin(rad);
+  const largeArc = alpha > 180 ? 1 : 0;
+
+  const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+  const d = `M ${cx} ${cy} L ${x1} ${y1} A ${R} ${R} 0 ${largeArc} 0 ${x2} ${y2} Z`;
+  path.setAttribute("d", d);
+  path.setAttribute("fill", "rgba(231, 76, 60, 0.35)");
+  path.setAttribute("stroke", "rgba(231, 76, 60, 0.65)");
+  path.setAttribute("stroke-width", "2");
+  svg.appendChild(path);
+
+  // Radios del ángulo
+  const r1 = document.createElementNS("http://www.w3.org/2000/svg","line");
+  r1.setAttribute("x1", cx); r1.setAttribute("y1", cy);
+  r1.setAttribute("x2", x1); r1.setAttribute("y2", y1);
+  r1.setAttribute("stroke","#000"); r1.setAttribute("stroke-width","2");
+  svg.appendChild(r1);
+
+  const r2 = document.createElementNS("http://www.w3.org/2000/svg","line");
+  r2.setAttribute("x1", cx); r2.setAttribute("y1", cy);
+  r2.setAttribute("x2", x2); r2.setAttribute("y2", y2);
+  r2.setAttribute("stroke","#000"); r2.setAttribute("stroke-width","2");
+  svg.appendChild(r2);
+
+  // Flecha radio
+  const radio = document.createElementNS("http://www.w3.org/2000/svg","line");
+  radio.setAttribute("x1", cx); radio.setAttribute("y1", cy);
+  radio.setAttribute("x2", cx + R + 25); radio.setAttribute("y2", cy);
+  radio.setAttribute("stroke","#000"); radio.setAttribute("stroke-width","2");
+  radio.setAttribute("marker-end","url(#arrow)");
+  svg.appendChild(radio);
+
+  const textR = document.createElementNS("http://www.w3.org/2000/svg","text");
+  textR.setAttribute("x", cx + R + 10);
+  textR.setAttribute("y", cy - 8);
+  textR.setAttribute("font-size","16");
+  textR.textContent = "r";
+  svg.appendChild(textR);
+
+  const textA = document.createElementNS("http://www.w3.org/2000/svg","text");
+  textA.setAttribute("x", cx + 22);
+  textA.setAttribute("y", cy - 22);
+  textA.setAttribute("font-size","16");
+  textA.textContent = "α";
+  svg.appendChild(textA);
+
+  const centro = document.createElementNS("http://www.w3.org/2000/svg","circle");
+  centro.setAttribute("cx", cx); centro.setAttribute("cy", cy);
+  centro.setAttribute("r", 3); centro.setAttribute("fill","#1f4e79");
+  svg.appendChild(centro);
+}
+
+/* ===================== SINCRONIZACIONES ===================== */
+function syncAngulo(){
+  const a = document.getElementById("angulo").value;
+  document.getElementById("anguloDraw").value = a;
+  redibujar();
+}
+function syncAngulo6(){
+  const a = document.getElementById("alpha6").value;
+  document.getElementById("anguloDraw").value = a;
+  redibujar();
+}
+function redibujar(){
+  const a = document.getElementById("anguloDraw").value;
+  dibujarEsferaYCuna(a);
+}
+
+/* ===================== BLOQUE 1-2 UNIFICADO ===================== */
+function actualizarModo12(){
+  const modo = document.getElementById("modo12").value;
+  const u = getUnit();
+  document.getElementById("u_r_12").textContent = u;
+
+  if(modo === "area"){
+    document.getElementById("formula12").innerHTML = `\\[ A = 4\\pi r^2 \\]`;
+  }else{
+    document.getElementById("formula12").innerHTML = `\\[ V = \\frac{4}{3}\\pi r^3 \\]`;
+  }
+  MathJax.typeset();
+}
+function calcular12(){
+  const modo = document.getElementById("modo12").value;
+  const u = getUnit();
+  const r = Number(document.getElementById("r12").value);
+
+  if(modo === "area"){
+    const A = 4 * Math.PI * r * r;
+    document.getElementById("res12").innerHTML =
+      `\\( A = 4\\pi(${r})^2 = \\mathbf{${A.toFixed(2)}}\\,${u2(u)} \\)`;
+  }else{
+    const V = (4/3) * Math.PI * Math.pow(r,3);
+    document.getElementById("res12").innerHTML =
+      `\\( V = \\frac{4}{3}\\pi(${r})^3 = \\mathbf{${V.toFixed(2)}}\\,${u3(u)} \\)`;
+  }
+  MathJax.typeset();
+}
+
+/* ===================== BLOQUE 3-4 UNIFICADO ===================== */
+function actualizarModo34(){
+  const modo = document.getElementById("modo34").value;
+  const u = getUnit();
+
+  if(modo === "area"){
+    document.getElementById("formula34").innerHTML = `\\[ A = 4\\pi r^2 \\]`;
+    document.getElementById("labelDato34").textContent = "Área A:";
+    document.getElementById("u_dato34").textContent = u2(u);
+  }else{
+    document.getElementById("formula34").innerHTML = `\\[ V = \\frac{4}{3}\\pi r^3 \\]`;
+    document.getElementById("labelDato34").textContent = "Volumen V:";
+    document.getElementById("u_dato34").textContent = u3(u);
+  }
+  MathJax.typeset();
+}
+function calcular34(){
+  const modo = document.getElementById("modo34").value;
+  const u = getUnit();
+  const dato = Number(document.getElementById("dato34").value);
+
+  if(modo === "area"){
+    const r = Math.sqrt(dato / (4*Math.PI));
+    document.getElementById("res34").innerHTML =
+      `\\( r = \\sqrt{\\frac{${dato}}{4\\pi}} \\approx \\mathbf{${r.toFixed(2)}}\\,${u} \\)`;
+  }else{
+    const r = Math.cbrt((3*dato)/(4*Math.PI));
+    document.getElementById("res34").innerHTML =
+      `\\( r = \\sqrt[3]{\\frac{3\\cdot ${dato}}{4\\pi}} \\approx \\mathbf{${r.toFixed(2)}}\\,${u} \\)`;
+  }
+  MathJax.typeset();
+}
+
+/* ===================== PUNTO 3: CUÑA ===================== */
+function actualizarModoCuna(){
+  const modo = document.getElementById("modoCuna").value;
+  const u = getUnit();
+  document.getElementById("u_r_cuna").textContent = u;
+
+  if(modo === "area"){
+    document.getElementById("formulaCuna").innerHTML =
+      `\\[ A_{\\text{cuña}}=\\frac{4\\pi r^2\\,\\alpha}{360} \\]`;
+  }else{
+    document.getElementById("formulaCuna").innerHTML =
+      `\\[ V_{\\text{cuña}}=\\frac{4\\pi r^3\\,\\alpha}{3\\cdot 360} \\]`;
+  }
+  MathJax.typeset();
+}
+function calcularCuna(){
+  const modo = document.getElementById("modoCuna").value;
+  const u = getUnit();
+  const r = Number(document.getElementById("rCuna").value);
+  const a = Number(document.getElementById("angulo").value);
+
+  if(modo === "area"){
+    const A = (4 * Math.PI * r * r * a) / 360;
+    document.getElementById("resCuna").innerHTML =
+      `\\( A_{\\text{cuña}} = \\frac{4\\pi(${r})^2\\cdot ${a}}{360} = \\mathbf{${A.toFixed(2)}}\\,${u2(u)} \\)`;
+  }else{
+    const V = (4 * Math.PI * Math.pow(r,3) * a) / (3*360);
+    document.getElementById("resCuna").innerHTML =
+      `\\( V_{\\text{cuña}} = \\frac{4\\pi(${r})^3\\cdot ${a}}{3\\cdot 360} = \\mathbf{${V.toFixed(2)}}\\,${u3(u)} \\)`;
+  }
+
+  MathJax.typeset();
+  document.getElementById("anguloDraw").value = a;
+  dibujarEsferaYCuna(a);
+}
+
+/* ===================== PUNTO 4: RADIO DESDE CUÑA ===================== */
+function actualizarModo6(){
+  const u = getUnit();
+  const modo = document.getElementById("modo6").value;
+
+  if(modo === "area"){
+    document.getElementById("labelDato6").textContent = "Área de la cuña:";
+    document.getElementById("u_dato6").textContent = u2(u);
+  }else{
+    document.getElementById("labelDato6").textContent = "Volumen de la cuña:";
+    document.getElementById("u_dato6").textContent = u3(u);
+  }
+  MathJax.typeset();
+}
+function radioDesdeCuna(){
+  const u = getUnit();
+  const modo = document.getElementById("modo6").value;
+  const alpha = Number(document.getElementById("alpha6").value);
+  const dato = Number(document.getElementById("dato6").value);
+
+  if(alpha <= 0){
+    document.getElementById("res6").innerHTML = "⚠️ El ángulo α debe ser mayor que 0.";
+    return;
+  }
+
+  if(modo === "area"){
+    const r = Math.sqrt((dato * 360) / (4 * Math.PI * alpha));
+    document.getElementById("res6").innerHTML =
+      `\\( r = \\sqrt{\\frac{${dato}\\cdot 360}{4\\pi\\cdot ${alpha}}} \\approx \\mathbf{${r.toFixed(2)}}\\,${u} \\)`;
+  }else{
+    const r = Math.cbrt((dato * (3*360)) / (4 * Math.PI * alpha));
+    document.getElementById("res6").innerHTML =
+      `\\( r = \\sqrt[3]{\\frac{${dato}\\cdot (3\\cdot 360)}{4\\pi\\cdot ${alpha}}} \\approx \\mathbf{${r.toFixed(2)}}\\,${u} \\)`;
+  }
+
+  document.getElementById("anguloDraw").value = alpha;
+  dibujarEsferaYCuna(alpha);
+
+  MathJax.typeset();
+}
+
+/* ===================== INICIALIZACIÓN ===================== */
+function actualizarUnidadesEnPantalla(){
+  document.getElementById("u_r_12").textContent = getUnit();
+  actualizarModo12();
+  actualizarModo34();
+  actualizarModoCuna();
+  actualizarModo6();
+}
+
+dibujarEsferaYCuna(document.getElementById("anguloDraw").value);
+actualizarUnidadesEnPantalla();
+</script>
+
+</body>
+</html>
